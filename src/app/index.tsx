@@ -1,98 +1,152 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState } from "react";
+import { SafeAreaView, StyleSheet } from "react-native";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import Calculator from "../components/Calculator";
+import { calculateExpression , deleteLast, shiftKeys , toFraction , formatNumber , prettyExpression} from "../utils/calculatorLogic";
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+const typedKeys = [
+  "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+  ".", "+", "−", "×", "÷", "(", ")",
+];
+
+const tokens: Record<string, string> = {
+  "(-)": "-",
+  "sin": "sin(",
+  "cos": "cos(",
+  "tan": "tan(",
+  "log": "log(",
+  "ln": "ln(",
+  "√": "sqrt(",
+  "x²": "^2",
+  "xʸ": "^",
+  "x⁻¹": "^(-1)",
+  "×10ˣ": "×10^",
+
+  "sin⁻¹": "asin(",
+  "cos⁻¹": "acos(",
+  "tan⁻¹": "atan(",
+  "∛": "cbrt(",
+  "x³": "^3",
+  "x!": "!",
+  "10ˣ": "10^(",
+  "eˣ": "e^(",
+  "π": "π",
+};
+
+export default function Index() {
+
+  const [expression, setExpression] = useState("");
+
+  const [result, setResult] = useState("");
+  const [error, setError] = useState("");
+
+  const [previousAnswer, setPreviousAnswer] = useState(0);
+  const [justCalculated, setJustCalculated] = useState(false);
+
+  const [shift, setShift] = useState(false);
+
+  const [showModes, setShowModes] = useState(false);
+
+  const addToExpression = (text: string) => {
+    const startsWithOperator = "+−×÷^!".includes(text[0]);
+
+    if (justCalculated) {
+      setExpression((startsWithOperator ? "Ans" : "") + text);
+    } else {
+      setExpression((current) => current + text);
+    }
+
+    setJustCalculated(false);
+    setResult("");
+  };
+
+  const handlePress = (pressedKey: string) => {
+    setError("");
+
+    if (showModes) {
+      if (pressedKey === "AC" || pressedKey === "MODE") setShowModes(false);
+      return;
+    }
+
+    if (pressedKey === "SHIFT") {
+      setShift(!shift);
+      return;
+    }
+
+    if (pressedKey === "MODE") {
+      setShift(false);
+      setShowModes(true);
+      return;
+    }
+
+    const key = shift ? (shiftKeys[pressedKey] ?? pressedKey) : pressedKey;
+    setShift(false);
+    
+    if (key === "=") {
+      try {
+        const calculation = calculateExpression(expression, previousAnswer);
+        setResult(calculation.display);
+        setPreviousAnswer(calculation.value);
+        setJustCalculated(true);
+      } catch {
+        setError("Math ERROR");
+        setResult("");
+      }
+      return;
+    }
+    if (key === "AC") {
+      setExpression("");
+      setResult("");
+      setJustCalculated(false);
+      return;
+    }
+    if (key === "DEL") {
+      if (justCalculated) {
+        setJustCalculated(false);
+        setResult("");
+      } else {
+        setExpression((current) => deleteLast(current));
+      }
+      return;
+    }
+    if (key === "Ans") {
+      addToExpression("Ans");
+      return;
+    }
+    if (key === "S⇔D") {
+      if (!justCalculated) return;
+
+      if (result.includes("/")) {
+        setResult(formatNumber(previousAnswer));
+      } else {
+        const fraction = toFraction(previousAnswer);
+        if (fraction) setResult(fraction);
+      }
+      return;
+    }
+    if (typedKeys.includes(key)) {
+      addToExpression(key);
+      return;
+    }
+
+    if (key in tokens) {
+      addToExpression(tokens[key]);
+    }
+  };
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
-
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+    <SafeAreaView style={styles.container}>
+      <Calculator expression={prettyExpression(expression)} onPress={handlePress} result={result} error={error} shift={shift} showModes={showModes}/>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    backgroundColor: "#252525",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
   },
 });
