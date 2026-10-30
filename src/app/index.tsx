@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { SafeAreaView, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import Calculator from "../components/Calculator";
-import { calculateExpression , deleteLast, shiftKeys , toFraction , formatNumber , prettyExpression} from "../utils/calculatorLogic";
+import { calculateExpression , deleteLast, shiftKeys , toFraction , formatNumber , prettyExpression , nextTokenLength} from "../utils/calculatorLogic";
 
 const typedKeys = [
   "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -47,18 +48,27 @@ export default function Index() {
 
   const [showModes, setShowModes] = useState(false);
 
+  const [cursor, setCursor] = useState(0);
+
+
   const addToExpression = (text: string) => {
     const startsWithOperator = "+−×÷^!".includes(text[0]);
 
     if (justCalculated) {
-      setExpression((startsWithOperator ? "Ans" : "") + text);
+      const newExpression = (startsWithOperator ? "Ans" : "") + text;
+      setExpression(newExpression);
+      setCursor(newExpression.length);
     } else {
-      setExpression((current) => current + text);
+      const before = expression.slice(0, cursor);
+      const after = expression.slice(cursor);
+      setExpression(before + text + after);
+      setCursor(cursor + text.length);
     }
 
     setJustCalculated(false);
     setResult("");
   };
+
 
   const handlePress = (pressedKey: string) => {
     setError("");
@@ -82,6 +92,31 @@ export default function Index() {
     const key = shift ? (shiftKeys[pressedKey] ?? pressedKey) : pressedKey;
     setShift(false);
     
+
+    if (key === "LEFT") {
+      if (justCalculated) {
+        setJustCalculated(false);
+        setResult("");
+        setCursor(expression.length);
+        return;
+      }
+      setCursor(deleteLast(expression.slice(0, cursor)).length);
+      return;
+    }
+
+    if (key === "RIGHT") {
+      if (justCalculated) {
+        setJustCalculated(false);
+        setResult("");
+        setCursor(expression.length);
+        return;
+      }
+      setCursor(cursor + nextTokenLength(expression.slice(cursor)));
+      return;
+    }
+
+
+    
     if (key === "=") {
       try {
         const calculation = calculateExpression(expression, previousAnswer);
@@ -98,6 +133,7 @@ export default function Index() {
       setExpression("");
       setResult("");
       setJustCalculated(false);
+      setCursor(0);
       return;
     }
     if (key === "DEL") {
@@ -105,7 +141,10 @@ export default function Index() {
         setJustCalculated(false);
         setResult("");
       } else {
-        setExpression((current) => deleteLast(current));
+        const before = deleteLast(expression.slice(0, cursor));
+        const after = expression.slice(cursor);
+        setExpression(before + after);
+        setCursor(before.length);
       }
       return;
     }
@@ -136,7 +175,16 @@ export default function Index() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Calculator expression={prettyExpression(expression)} onPress={handlePress} result={result} error={error} shift={shift} showModes={showModes}/>
+      <Calculator
+        before={prettyExpression(expression.slice(0, cursor))}
+        after={prettyExpression(expression.slice(cursor))}
+        showCursor={!justCalculated}
+        onPress={handlePress}
+        result={result}
+        error={error}
+        shift={shift}
+        showModes={showModes}
+      />
     </SafeAreaView>
   );
 }
@@ -145,8 +193,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#252525",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
+    padding: 12,
   },
 });

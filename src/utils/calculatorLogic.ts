@@ -49,10 +49,18 @@ export function calculateExpression(expression: string, previousAnswer: number) 
 }
 export function deleteLast(expression: string): string {
   return expression.replace(
-    /(sin\(|cos\(|tan\(|log\(|ln\(|sqrt\(|\^\(-1\)|×10\^|.)$/u,
+    /(asin\(|acos\(|atan\(|sin\(|cos\(|tan\(|log\(|ln\(|sqrt\(|cbrt\(|\^\(-1\)|×10\^|Ans|.)$/u,
     ""
   );
 }
+
+export function nextTokenLength(text: string): number {
+  const match = text.match(
+    /^(asin\(|acos\(|atan\(|sin\(|cos\(|tan\(|log\(|ln\(|sqrt\(|cbrt\(|\^\(-1\)|×10\^|Ans|.)/u
+  );
+  return match ? match[0].length : 0;
+}
+
 export const shiftKeys: Record<string, string> = {
   "sin": "sin⁻¹",
   "cos": "cos⁻¹",

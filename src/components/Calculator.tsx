@@ -1,8 +1,11 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { shiftKeys } from "../utils/calculatorLogic";
+import React, { useEffect, useState } from "react";
 
 type Props = {
-  expression: string;
+  before: string;
+  after: string;
+  showCursor: boolean;
   onPress: (key: string) => void;
   result: string;
   error: string;
@@ -26,7 +29,16 @@ const modeList = [
   "5:EQN", "6:MATRIX", "7:TABLE", "8:VECTOR",
 ];
 
-export default function Calculator({ expression , onPress, result, error , shift, showModes}: Props) {
+export default function Calculator({ before, after, showCursor, onPress, result, error , shift, showModes}: Props) {
+
+  const [blink, setBlink] = useState(true);
+
+  useEffect(() => {
+    const id = setInterval(() => setBlink((b) => !b), 500);
+    return () => clearInterval(id);
+  }, []);
+
+
   return (
     <View style={styles.body}>
       <View style={styles.header}>
@@ -52,13 +64,16 @@ export default function Calculator({ expression , onPress, result, error , shift
           </View>
         ) : (
           <>
-            <Text
-              style={[
-                styles.expression,
-                expression.length > 20 && styles.expressionSmall,
-              ]}
-            >
-              {expression || "0"}
+            <Text style={styles.expression}>
+              {before}
+              <Text
+                style={{
+                  color: showCursor && blink ? "#17271c" : "transparent",
+                }}
+              >
+                |
+              </Text>
+              {after}
             </Text>
             <Text style={styles.result}>{error || result}</Text>
           </>
@@ -80,8 +95,20 @@ export default function Calculator({ expression , onPress, result, error , shift
           <Text style={styles.arrowTop}>▲</Text>
           <Text style={styles.replayText}>REPLAY</Text>
           <Text style={styles.arrowBottom}>▼</Text>
-          <Text style={styles.arrowLeft}>◀</Text>
-          <Text style={styles.arrowRight}>▶</Text>
+          <Pressable
+            onPress={() => onPress("LEFT")}
+            style={styles.arrowLeft}
+            hitSlop={12}
+          >
+            <Text style={styles.arrowText}>◀</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => onPress("RIGHT")}
+            style={styles.arrowRight}
+            hitSlop={12}
+          >
+            <Text style={styles.arrowText}>▶</Text>
+          </Pressable>
         </View>
 
         <Pressable
@@ -127,16 +154,18 @@ export default function Calculator({ expression , onPress, result, error , shift
 const styles = StyleSheet.create({
   body: {
     width: "100%",
-    maxWidth: 390,
+    maxWidth: 420,
     backgroundColor: "#b9b9ad",
     borderRadius: 27,
     borderWidth: 2,
     borderColor: "#77786e",
     padding: 13,
     paddingTop: 18,
+    flex: 1,
+    alignSelf: "center",
   },
   screen: {
-    height: 120,
+    flex: 1.6,
     backgroundColor: "#a2cbb0",
     borderRadius: 6,
     padding: 10,
@@ -151,10 +180,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   keys: {
+    flex: 6,
     marginTop: 8,
     gap: 2,
   },
   keyRow: {
+    flex: 1,
     flexDirection: "row",
     gap: 5,
   },
@@ -162,7 +193,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   key: {
-    height: 43,
+    flex: 1,
     borderRadius: 8,
     backgroundColor: "#272727",
     alignItems: "center",
@@ -190,7 +221,7 @@ const styles = StyleSheet.create({
   },
   topRow: {
     marginTop: 10,
-    height: 66,
+    flex: 1.1,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -233,7 +264,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ed7d29",
   },
   header: {
-    height: 80,
+    flex: 1,
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 8,
@@ -259,7 +290,7 @@ const styles = StyleSheet.create({
   },
   solar: {
     width: "43%",
-    height: 54,
+    height: "90%",
     backgroundColor: "#111",
     borderRadius: 7,
     borderWidth: 2,
@@ -282,11 +313,11 @@ const styles = StyleSheet.create({
   },
   replay: {
     position: "absolute",
-    top: 20,
+    top: "18%",
+    bottom: 0,
     left: "50%",
-    marginLeft: -38,
-    width: 76,
-    height: 66,
+    marginLeft: -42,
+    width: 90,
     borderRadius: 36,
     backgroundColor: "#72736d",
     borderWidth: 2,
@@ -313,17 +344,21 @@ const styles = StyleSheet.create({
   },
   arrowLeft: {
     position: "absolute",
-    left: 7,
+    left: 3,
     color: "#a0a197",
     fontSize: 9,
   },
   arrowRight: {
     position: "absolute",
-    right: 7,
+    right: 3,
     color: "#a0a197",
     fontSize: 9,
   },
   modeButton: {
     marginLeft: "auto",
+  },
+  arrowText: {
+  color: "#a0a197",
+  fontSize: 12,
   },
 });
